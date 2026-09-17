@@ -1,0 +1,11 @@
+# Copy/rename to data.yaml or pass your generated data.yaml to train/evaluate scripts.
+# Do not commit the dataset itself.
+path: /path/to/yolo_dataset
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: Aircraft
+  1: Building
+  2: Military Truck
+  3: Tank
