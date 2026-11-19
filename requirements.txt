@@ -1,9 +1,10 @@
-# Install PyTorch FIRST, matching your CUDA version, using the selector at
-# https://pytorch.org/get-started/locally/
-# e.g. for CUDA 12.1:
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-# CPU-only (no NVIDIA GPU):
-#   pip install torch torchvision
-
-ultralytics>=8.2.0
+# Install PyTorch for your CUDA version first: https://pytorch.org/get-started/locally/
+torch>=2.1
+torchvision>=0.16
+ultralytics>=8.3.0
+numpy>=1.24
+opencv-python>=4.8
+pillow>=10.0
 pyyaml>=6.0
+# optional: drape the roof mesh on a 3-D tank model (cpa3d/aux_mesh.py --model)
+# trimesh>=4.0

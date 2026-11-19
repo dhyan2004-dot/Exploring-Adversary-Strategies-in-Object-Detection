@@ -2,16 +2,23 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-env/
-.env
 .ipynb_checkpoints/
 .DS_Store
-runs/
-wandb/
-*.cache
-# Local datasets can be large; do not commit them by default.
-yolo_dataset/
-Aerial\ Image\ Dataset/
-# Optional local model downloads
+# data, weights and run outputs are not versioned
+data/*
+!data/README.md
+*.pt
+*.pth
 *.onnx
-*.engine
+runs/
+cv_runs*/
+cv_*/
+cpa3d_runs/
+pretrained/
+# LaTeX build files
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.bbl
+report/*.blg
