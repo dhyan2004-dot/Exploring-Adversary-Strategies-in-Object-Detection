@@ -27,30 +27,26 @@ def parse_args():
     p=argparse.ArgumentParser(description="Evaluate a patch's attack effectiveness (with controls).")
     p.add_argument("--data",type=str,default=str(DEFAULT_DATA_YAML))
     p.add_argument("--weights",type=str,required=True)
-    p.add_argument("--patch",type=str,required=True,help="Path to the patch PNG.")
+    p.add_argument("--patch",type=str,required=True,help="Path to the patch PNG")
     p.add_argument("--target-class",type=str,default="Tank")
     p.add_argument("--split",type=str,default="dev_val",choices=["train","val","test","dev_val"])
     p.add_argument("--patch-scale",type=float,default=0.5,
-                    help="Patch width as a fraction of the object's box width. Use the value the patch was trained with.")
+                    help="Patch width as a fraction of the object's box width")
     p.add_argument("--corruptions",type=str,default="none",
-                    help="Comma-separated conditions from: none,light,shadow,rain,mud,mixed -- or 'all'.")
+                    help="Comma-separated conditions from: none,light,shadow,rain,mud,mixed")
     p.add_argument("--conf-threshold",type=float,default=0.25,
-                    help="Confidence at or above which the object counts as detected.")
+                    help="Confidence at or above which the object counts as detected")
     p.add_argument("--iou-match",type=float,default=0.3,
-                    help="IoU with the ground-truth box needed for a prediction to count as that object.")
+                    help="IoU with the ground-truth box needed for a prediction to count as that object")
     p.add_argument("--imgsz",type=int,default=None,
-                    help="Inference resolution; must match the detector's training imgsz. Auto-detected "
- "from the checkpoint if omitted (otherwise Ultralytics silently uses 640).")
+                    help="Inference resolution; must match the detector's training imgsz")
     p.add_argument("--device",type=str,default=None)
-    p.add_argument("--seed",type=int,default=0,help="Seed for corruption sampling and the noise control.")
+    p.add_argument("--seed",type=int,default=0,help="Seed for corruption sampling and the noise control")
     p.add_argument("--max-instances",type=int,default=None)
     p.add_argument("--max-files-per-photo",type=int,default=None,
-                    help="Each source photo has up to ~36 augmented variants. Evaluate at most this many per "
- "photo (chosen deterministically, so every patch/method sees the SAME files). "
- "6 is a good value: it keeps lighting/zoom variety and cuts run time ~6x. "
- "Photos, not files, are the statistical unit either way.")
+                    help="Each source photo has up to ~36 augmented variants")
     p.add_argument("--save-examples",type=int,default=8,
-                    help="Before/after image pairs to save (half successes, half failures, one per source photo).")
+                    help="Before/after image pairs to save")
     p.add_argument("--output-dir",type=str,default="patch_runs/eval")
     return p.parse_args()
 
@@ -65,7 +61,7 @@ def detect_training_imgsz(weights_path):
         return None
 
 def make_control_patch(kind:str,size:int,seed:int=0):
-    """Non-adversarial patches of the same size: separate 'the adversarial pattern works' from 'any square..."""
+    """Non-adversarial patches of the same size: separate 'the adversarial pattern works' from 'any square covering part of the object hides it'."""
     if kind=="noise":
         arr=np.random.default_rng(seed).integers(0,256,(size,size,3),dtype=np.uint8)
     else:
@@ -194,21 +190,17 @@ def main():
     conditions=ALL_CONDITIONS if args.corruptions=="all" else [c.strip() for c in args.corruptions.split(",")]
     bad=[c for c in conditions if c not in ALL_CONDITIONS]
     if bad:
-        raise SystemExit(f"Unknown --corruptions value(s) {bad}; choose from {ALL_CONDITIONS} or 'all'.")
+        raise SystemExit(f"unknown condition {bad}")
     with open(args.data) as f:
         data_cfg=yaml.safe_load(f)
     names=data_cfg["names"]
     name_to_id={v:k for k,v in names.items()}
     target_id=int(args.target_class) if args.target_class.isdigit() else name_to_id[args.target_class]
-    print(f"Target class: {names[target_id]} (id={target_id})")
     from ultralytics import YOLO
     model=YOLO(args.weights)
     imgsz=args.imgsz or detect_training_imgsz(args.weights)
     if imgsz is None:
         imgsz=640
-        print("WARNING: could not auto-detect training imgsz; using 640. Pass --imgsz explicitly if wrong.")
-    else:
-        print(f"Using inference imgsz={imgsz}")
     patch=Image.open(args.patch).convert("RGB")
     variants={"adversarial":patch}
     for kind in CONTROLS:
@@ -219,9 +211,7 @@ def main():
     samples=load_target_class_samples(images_dir,labels_dir,target_id,args.max_instances,
                                         args.max_files_per_photo)
     if not samples:
-        raise SystemExit(f"No instances of '{names[target_id]}' found in {images_dir}")
-    print(f"Evaluating {len(samples)} instances of '{names[target_id]}' from '{args.split}' "
- f"| patch_scale={args.patch_scale} | conditions: {conditions}")
+        raise SystemExit("no target instances")
     out_dir=Path(args.output_dir)
     examples_dir=out_dir/"examples"
     examples_dir.mkdir(parents=True,exist_ok=True)
@@ -285,46 +275,17 @@ def main():
         "results_by_condition":results,
         "photo_level_by_condition":photo_level,
     }
-    print("\n"+"="*78)
-    print(f"ATTACK EFFECTIVENESS  |  {args.patch}  |  {args.split}  |  patch_scale={args.patch_scale}")
-    print("="*78)
-    mean_before=before[detected].mean() if n_det else float("nan")
-    print(f"  Detected before patching: {n_det} of {len(samples)} instances "
- f"(conf >= {thr}, IoU >= {args.iou_match});  mean confidence {mean_before:.3f}")
-    if n_det:
-        print(f"\n  Share of detected instances that DISAPPEAR (conf < {thr}) after the patch:")
-        print(f"  {'condition':<12}{'ADVERSARIAL  [95% CI]':>28}{'gray ctrl':>12}{'noise ctrl':>12}")
-        for cond in conditions:
-            r=results[cond]
-            a=r["adversarial"]
-            lo,hi=a["disappearance_ci95"]
-            print(f"  {cond:<12}{a['disappearance_rate']:>10.2f}  [{lo:.2f}, {hi:.2f}]"
- f"{r['gray']['disappearance_rate']:>12.2f}{r['noise']['disappearance_rate']:>12.2f}")
-        print("\n  The attack counts only for what it achieves BEYOND the controls (same size, same place).")
-        print("  The Wilson CIs above treat instances as independent -> too narrow. Honest version "
- "(photos resampled):")
-        print(f"  {'condition':<12}{'adversarial [95% CI]':>26}{'margin over best control [95% CI]':>40}")
-        for cond in conditions:
-            pl=photo_level[cond]
-            lo,hi=pl["ci95"]["adversarial"]
-            mlo,mhi=pl["margin_ci95"]
-            print(f"  {cond:<12}{pl['rate']['adversarial']:>9.2f}  [{lo:.2f}, {hi:.2f}]"
- f"{pl['margin_over_best_control']:>+16.2f}  [{mlo:+.2f}, {mhi:+.2f}]")
-        n_ph=summary["n_photos_with_detected_instances"]
-        print(f"  ({n_ph} distinct photos contribute; a margin whose interval includes 0 is not evidence "
- f"that the pattern beats plain occlusion.)")
-    if n_det<100:
-        print(f"\n  WARNING: only {n_det} instances were detected before patching -- rates are very uncertain.")
-    if n_det<0.3*len(samples):
-        print("  WARNING: the detector finds under 30% of these instances even without a patch -- check "
- "imgsz/colour handling before trusting this.")
+    print("detected",n_det,"of",len(samples))
+    for cond in conditions:
+        pl=photo_level.get(cond)
+        if pl:
+            print(cond,f"{pl['rate']['adversarial']:.3f}",f"margin {pl['margin_over_best_control']:+.3f}",
+                  "[{:+.2f}, {:+.2f}]".format(*pl["margin_ci95"]))
     with open(out_dir/"attack_summary.json","w") as f:
         json.dump(summary,f,indent=2)
     with open(out_dir/"per_instance.json","w") as f:
         json.dump(per_instance,f,indent=2)
-    print(f"\nSummary: {out_dir / 'attack_summary.json'}")
-    print(f"Examples ({example_counts['success']} success / {example_counts['fail']} fail, "
- f"one per source photo): {examples_dir}")
+    print(out_dir/"attack_summary.json")
 
 if __name__=="__main__":
     main()

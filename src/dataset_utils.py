@@ -8,7 +8,7 @@ from pathlib import Path
 _SOURCE_GROUP_PATTERN=re.compile(r"^(.*rf\.[0-9a-f]{32})")
 
 def extract_source_group(stem:str)->str:
-    """Return the stable grouping key for a file stem: everything up to and including the Roboflow hash,..."""
+    """Return the stable grouping key for a file stem: everything up to and including the Roboflow hash."""
     m=_SOURCE_GROUP_PATTERN.match(stem)
     return m.group(1) if m else stem
 
@@ -30,7 +30,7 @@ def group_label_stems(labels_dir:Path,skip_dup:bool=True):
     return dict(groups),dict(group_classes)
 
 def label_path_for(img_path)->Path:
-    """Ultralytics rule: swap the LAST '/images/' path component for '/labels/' and the extension for .txt..."""
+    """Ultralytics rule: swap the LAST '/images/' path component for '/labels/' and the extension for .txt."""
     p=str(img_path)
     sa,sb="/images/","/labels/"
     head,sep,tail=p.rpartition(sa)

@@ -14,7 +14,7 @@ from.import BigGAN,utils
 HERE=Path(__file__).resolve().parent
 
 class ConditionedBigGAN(nn.Module):
-    """G(z) for a fixed ImageNet class, as in GANLatentDiscovery.models.gan_load.ConditionedBigGAN."""
+    """G(z) for a fixed ImageNet class."""
     def __init__(self,big_gan,target_class):
         super().__init__()
         self.big_gan=big_gan

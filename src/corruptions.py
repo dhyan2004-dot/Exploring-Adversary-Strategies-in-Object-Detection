@@ -80,7 +80,7 @@ def apply_layers(tile,layers):
     return tile
 
 def layers_for_condition(condition,size,rng):
-    """Named evaluation conditions: none | light | shadow | rain | mud | mixed ('mixed' = two different..."""
+    """Named evaluation conditions: none | light | shadow | rain | mud | mixed."""
     if condition=="none":
         return []
     if condition=="mixed":

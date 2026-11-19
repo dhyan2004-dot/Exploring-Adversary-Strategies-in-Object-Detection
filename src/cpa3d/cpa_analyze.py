@@ -51,7 +51,7 @@ def main():
     conds=[c for c in CONDS if f"after_{c}_{variants[0]}" in r0]
     lines,js=[],{}
     P=lines.append
-    P(f"# 3-D patch attack results (pooled over folds)\n\nRuns: `{root}`; detectors: "
+    P(f"# 3-D patch attack results (pooled over folds)\n\nDetectors: "
       +", ".join(f"{d} ({len(folds[d])} folds)" for d in dets)+"\n")
     for thr in (0.5,0.25):
         js[thr]={}

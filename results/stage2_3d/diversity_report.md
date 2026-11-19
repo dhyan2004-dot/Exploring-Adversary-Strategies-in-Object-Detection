@@ -1,6 +1,5 @@
 # Diversity ablation: CPA gain with paper-like (fixed-view) vs our full-diversity training
 
-Surrogate = yolov8s (white-box); yolov8m, yolo11s, rtdetr = black-box. Seed-averaged (2 seeds).
 
 
 ## Threshold 0.5

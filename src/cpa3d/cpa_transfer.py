@@ -51,8 +51,7 @@ def main():
     L=[]
     P=L.append
     P("# Transfer matrix (pooled over folds, no corruption at test)\n")
-    P("Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. "
- "**Bold** = white-box (same detector). Cell: ASR (margin over best control [95% photo CI]).\n")
+    P("Rows: trained on; columns: tested on; bold: white-box. Cells: ASR (margin over best control [95% CI])\n")
     for thr in (0.5,0.25):
         P(f"\n## Threshold {thr}\n")
         D={t:[r for r in rows[t] if r["before_conf"]>=thr] for t in dets}
@@ -87,12 +86,12 @@ def main():
         for at,(w,b,n) in summary.items():
             ratio=f"{b / w:.2f}" if w>0.01 else "--"
             P(f"| {at} | {w:+.3f} | {b:+.3f} ({n} pairs) | {ratio} |" if not np.isnan(w) else f"| {at} | -- | -- | -- |")
-        comps=[("cpa_none",b,"CPA claim: cpa_ls - cpa_none" if b=="cpa_ls" else f"{b} - cpa_none")
+        comps=[("cpa_none",b,f"{b} - cpa_none")
                  for b in attacks if b!="cpa_none"]
         for A,B,title in comps:
             if A not in attacks or B not in attacks:
                 continue
-            P(f"\n### {title} (positive = {B} transfers better)\n")
+            P(f"\n### {title}\n")
             P("| tested on | black-box surrogates | diff [95% CI] | photos that differ | p | Holm p |")
             P("|---|---|---|---|---|---|")
             tests=[]

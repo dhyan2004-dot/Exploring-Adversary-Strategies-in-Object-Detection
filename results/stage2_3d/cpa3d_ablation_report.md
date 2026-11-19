@@ -1,6 +1,5 @@
 # 3-D CPA ablations (pooled over folds)
 
-Cells: ASR (margin over the best same-size control [95% photo-level CI]). ASR = share of tanks detected before (conf >= thr) that disappear.
 
 
 ## Threshold 0.5
@@ -19,7 +18,7 @@ Cells: ASR (margin over the best same-size control [95% photo-level CI]). ASR = 
 | 2.0 m | cpa_ls_2m | 0.677 (+0.165 [+0.00, +0.31]) | 0.587 (+0.188 [+0.03, +0.37]) | 0.716 (-0.009 [-0.11, +0.09]) | 0.671 (+0.090 [-0.18, +0.32]) |
 | 2.0 m | *best control* | 0.511 | 0.399 | 0.724 | 0.581 |
 
-**cpa_ls minus cpa_none at each size** (positive = corruption training helps)
+**cpa_ls minus cpa_none at each size**
 
 | detector | sheet | condition | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|---|
@@ -127,7 +126,7 @@ Cells: ASR (margin over the best same-size control [95% photo-level CI]). ASR = 
 | 2.0 m | cpa_ls_2m | 0.512 (+0.163 [+0.03, +0.30]) | 0.558 (+0.178 [-0.01, +0.36]) | 0.582 (-0.098 [-0.19, -0.02]) | 0.599 (+0.155 [-0.16, +0.39]) |
 | 2.0 m | *best control* | 0.349 | 0.380 | 0.680 | 0.444 |
 
-**cpa_ls minus cpa_none at each size** (positive = corruption training helps)
+**cpa_ls minus cpa_none at each size**
 
 | detector | sheet | condition | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|---|

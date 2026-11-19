@@ -20,7 +20,7 @@ VARIANTS=["adversarial","gray","noise"]
 def parse_args():
     p=argparse.ArgumentParser()
     p.add_argument("--out",default="cv_runs")
-    p.add_argument("--baseline",default="eot",help="Method every other method is compared against.")
+    p.add_argument("--baseline",default="eot",help="Method every other method is compared against")
     p.add_argument("--n-boot",type=int,default=4000)
     return p.parse_args()
 
@@ -54,8 +54,7 @@ def detector_section(out:Path,rep:Report,js):
         return
     rep(f"## 1. Detector ({len(folds)}-fold, photo-grouped)\n")
     res={}
-    for split,label in (("val","held-out photos (never trained on; also used to pick the checkpoint -> slightly optimistic)"),
-                         ("test","official Testing split (independent of all folds)")):
+    for split,label in (("val","held-out photos"),("test","official test split")):
         rows=[]
         for d in folds:
             f=d/f"{split}_metrics.json"
@@ -100,12 +99,12 @@ def load_patch_results(out:Path):
     return runs
 
 def build_pool(runs,rep):
-    """Align all runs on identical (fold, instance) rows; keep detected-before-patch instances only."""
+    """Align all runs on identical."""
     keys=sorted(runs)
     folds=sorted(set.intersection(*[set(runs[k]) for k in keys]))
     missing=sorted(set.union(*[set(runs[k]) for k in keys])-set(folds))
     if missing:
-        rep(f"_Folds {missing} are incomplete for at least one method/seed and are excluded from the pooled analysis._\n")
+        rep(f"excluded folds: {missing}\n")
     thr=runs[keys[0]][folds[0]][1]
     ref_key=keys[0]
     groups,fold_of,sel=[],[],{k:[] for k in keys}
@@ -115,7 +114,7 @@ def build_pool(runs,rep):
             rows=runs[k][f][0]
             assert len(rows)==len(ref_rows) and all(a["image"]==b["image"] and a["instance"]==b["instance"]
                                                       for a,b in zip(rows,ref_rows)), \
-                f"fold {f}: {k} was evaluated on different instances than {ref_key}; rerun with identical settings."
+                f"fold {f}: instance mismatch {k}"
         det=[i for i,r in enumerate(ref_rows) if r["before_conf"]>=thr]
         for i in det:
             groups.append(ref_rows[i]["group"])
@@ -147,7 +146,6 @@ def group_series(pm,conds):
 def patch_section(out,rep,js,baseline,n_boot):
     runs=load_patch_results(out)
     if not runs:
-        rep("_No patch evaluation results found yet._")
         return
     methods_seeds=defaultdict(list)
     for m,s in sorted(runs):
@@ -158,19 +156,13 @@ def patch_section(out,rep,js,baseline,n_boot):
     pm=per_method(gone,{m:methods_seeds[m] for m in methods})
     n_ph,n_inst=len(set(groups)),len(groups)
     if n_inst==0:
-        rep("## 2. Patches\n\n_The detectors found no target instances before patching (conf threshold "
- f"{thr}), so there is nothing to attack. Expected in the 1-epoch smoke test; in a real run it "
- "means the detector is broken (check imgsz / weights)._\n")
+        rep("## 2. Patches\n\ndetected instances: 0\n")
         return
     tot_ph={f:len(set(groups[fold_of==f])) for f in folds}
     rep(f"## 2. Patches (pooled over folds {folds})\n")
-    rep(f"Target instances detected before patching: **{n_inst}** from **{n_ph} distinct photos** "
- f"(per fold: {tot_ph}). Attack success = a detected object drops below conf {thr}. "
- f"Seeds per method: { {m: len(methods_seeds[m]) for m in methods} }. "
- f"All intervals resample whole photos.\n")
+    rep(f"detected instances: {n_inst}, photos: {n_ph}, photos per fold: {tot_ph}, threshold: {thr}, "
+ f"seeds: { {m: len(methods_seeds[m]) for m in methods} }\n")
     js["patch"]={"n_instances":n_inst,"n_photos":n_ph,"folds":folds,"groups":{}}
-    rep("Headline columns weight every instance equally. The last column weights every PHOTO equally; "
- "if the two disagree, a few crowded photos are driving the result.\n")
     cond_groups={"none (no corruption)":["none"],"light+shadow+rain+mud (avg)":SINGLES,"mixed (2 stacked)":["mixed"]}
     rep("### 2a. Attack success vs. the best control (gray / noise square of the same size and place)\n")
     rep("| method | condition | patch hides object | best control | **margin** | margin 95% CI (photo-resampled) "
@@ -186,11 +178,10 @@ def patch_section(out,rep,js,baseline,n_boot):
             ctrl=max(r["rate"]["gray"],r["rate"]["noise"])
             lo,hi=r["ci95"]["adversarial"]
             mlo,mhi=r["margin_ci95"]
-            flag="" if mlo>0 else "  (CI includes 0)"
             rp=cluster_bootstrap(groups,ser,n_boot=n_boot,weighting="photo")
             plo,phi=rp["margin_ci95"]
             rep(f"| {m} | {gname} | {r['rate']['adversarial']:.3f} [{lo:.2f}, {hi:.2f}] | {ctrl:.3f} | "
- f"**{r['margin_over_best_control']:+.3f}** | [{mlo:+.3f}, {mhi:+.3f}]{flag} | "
+ f"**{r['margin_over_best_control']:+.3f}** | [{mlo:+.3f}, {mhi:+.3f}] | "
  f"{rp['margin_over_best_control']:+.3f} [{plo:+.3f}, {phi:+.3f}] |")
             js["patch"]["groups"][f"{m}|{gname}"]={"instance_weighted":r,"photo_weighted":rp}
     rep("")
@@ -208,10 +199,9 @@ def patch_section(out,rep,js,baseline,n_boot):
             tag="*" if c in TRAIN_KINDS.get(m,[]) else ""
             cells.append(f"{a:.2f} / {a - ctrl:+.2f}{tag}")
         rep(f"| {m} | "+" | ".join(cells)+" |")
-    rep("\n`*` = this corruption was applied to the patch during that method's training; unmarked corruption columns were unseen.\n")
+    rep("\n`*` corruption used in training\n")
     rep("### 2c. Paired comparison between methods (same instances, same corruption draws)\n")
-    rep("Positive difference = the second method hides MORE objects. p = photo-level sign-flip test, "
- "Holm-adjusted across this table.\n")
+    rep("B − A; photo-level sign-flip p, Holm-adjusted\n")
     pairs=[]
     for m in methods:
         if m!=baseline and baseline in pm:
@@ -240,9 +230,6 @@ def patch_section(out,rep,js,baseline,n_boot):
  f"{fmt_p(t['p'])} | {fmt_p(pa)} |")
         js["patch"]["paired"]=[{"a":a,"b":b,"cond":g,**t,"p_holm":float(pa)}
                                  for (a,b,g,t),pa in zip(comps,adj)]
-        rep("\nOnly photos where the two methods differ carry information, so the p-value cannot go below "
- "'smallest possible p'. With few photos the bootstrap CI is too narrow; when CI and p disagree, "
- "quote the (Holm-adjusted) p.\n")
     rep("### 2d. Consistency across folds (margin over best control, no corruption)\n")
     rep("| method | "+" | ".join(f"fold {f}" for f in folds)+" | mean ± sd |")
     rep("|---|"+"---|"*(len(folds)+1))
@@ -286,8 +273,7 @@ def mapdrop_section(out,rep,js):
         clean[(method,fold)].append((d["results"]["clean"]["mAP50"],d["results"]["clean"]["AP50_by_class"].get(target,np.nan)))
         for v,dr in d["drops"].items():
             per[method][v].append((fold,dr["mAP50_drop"],dr[f"{target}_AP50_drop"]))
-    rep(f"## 3. Full-image mAP50 drop with the patch on every {target} instance (held-out photos)\n")
-    rep("Mean over folds ± sd (seeds averaged inside a fold). The adversarial drop only counts beyond the gray / noise drops.\n")
+    rep(f"## 3. Full-image mAP50 drop, patch on every {target} instance (held-out photos, mean ± sd over folds)\n")
     rep(f"| method | clean {target} AP50 | adversarial: {target} AP50 drop | gray | noise | adversarial: overall mAP50 drop | gray | noise |")
     rep("|---|---|---|---|---|---|---|---|")
     js["mapdrop"]={}
@@ -308,13 +294,13 @@ def main():
     args=parse_args()
     out=Path(args.out)
     rep,js=Report(),{}
-    rep("# Cross-validated results (photo = unit of analysis)\n")
+    rep("# Cross-validated results\n")
     detector_section(out,rep,js)
     patch_section(out,rep,js,args.baseline,args.n_boot)
     mapdrop_section(out,rep,js)
     (out/"cv_report.md").write_text("\n".join(rep.lines))
     (out/"cv_report.json").write_text(json.dumps(js,indent=1,default=float))
-    print(f"\nWrote {out / 'cv_report.md'} and {out / 'cv_report.json'}")
+    print(out/"cv_report.md")
 
 if __name__=="__main__":
     main()

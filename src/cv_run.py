@@ -23,35 +23,33 @@ METHODS={
 
 def parse_args():
     p=argparse.ArgumentParser(description="Per-fold detector + patch pipeline.")
-    p.add_argument("--root",required=True,help="yolo_dataset folder (the one containing cv/).")
-    p.add_argument("--out",default="cv_runs",help="Output folder (outputs are written under <out>/fold{k}/).")
-    p.add_argument("--folds",default="all",help="Comma-separated fold numbers, or 'all'.")
+    p.add_argument("--root",required=True,help="yolo_dataset folder (the one containing cv/)")
+    p.add_argument("--out",default="cv_runs",help="Output folder (outputs are written under <out>/fold{k}/)")
+    p.add_argument("--folds",default="all",help="Comma-separated fold numbers, or 'all'")
     p.add_argument("--stages",default="detector,patch,eval,mapdrop")
     p.add_argument("--methods",default="eot,cpa_light,cpa_shadow,cpa_ls")
-    p.add_argument("--seeds",default="0",help="Patch-training seeds, e.g. 0,1,2 (each is a separate patch).")
+    p.add_argument("--seeds",default="0",help="Patch-training seeds, e.g. 0,1,2")
     p.add_argument("--target-class",default="Tank")
     p.add_argument("--patch-scale",type=float,default=0.4,
-                   help="Patch width as a fraction of the object's box width (0.4 ~ 16%% of the box area).")
+                   help="Patch width as a fraction of the object's box width")
     p.add_argument("--det-args",default="--model yolov8s.pt --epochs 15 --imgsz 960 --batch 8 --patience 5 --workers 4",
-                   help="Extra arguments for train_yolov8.py. SET THIS to your best earlier experiment "
- "(e.g. add --freeze N --lr0 X). Quote the whole string.")
+                   help="Extra arguments for train_yolov8.py")
     p.add_argument("--patch-epochs",type=int,default=20)
     p.add_argument("--instances-per-epoch",type=int,default=600)
-    p.add_argument("--patch-args",default="",help="Extra arguments appended to patch_train.py.")
+    p.add_argument("--patch-args",default="",help="Extra arguments appended to patch_train.py")
     p.add_argument("--max-files-per-photo",type=int,default=6,
-                   help="Held-out files per photo used by patch_evaluate / patch_map_drop.")
+                   help="Held-out files per photo used by patch_evaluate / patch_map_drop")
     p.add_argument("--eval-seed",type=int,default=0,
-                   help="Seed for the evaluation corruption draws. Keep it FIXED across methods: this is what "
- "makes the method comparison paired.")
-    p.add_argument("--device",default=None,help="Passed to the sub-scripts only if set.")
+                   help="Seed for the evaluation corruption draws")
+    p.add_argument("--device",default=None,help="Passed to the sub-scripts only if set")
     p.add_argument("--force",action="store_true")
-    p.add_argument("--keep-going",action="store_true",help="Continue with the next job if one fails.")
-    p.add_argument("--dry-run",action="store_true",help="Print the commands without running them.")
+    p.add_argument("--keep-going",action="store_true",help="Continue with the next job if one fails")
+    p.add_argument("--dry-run",action="store_true",help="Print the commands without running them")
     return p.parse_args()
 
 def run(cmd,log_path:Path,args,label):
     cmd=[str(c) for c in cmd]
-    print(f"\n[{time.strftime('%H:%M:%S')}] {label}\n    "+" ".join(shlex.quote(c) for c in cmd),flush=True)
+    print(time.strftime('%H:%M:%S'),label,flush=True)
     if args.dry_run:
         return True
     log_path.parent.mkdir(parents=True,exist_ok=True)
@@ -60,12 +58,11 @@ def run(cmd,log_path:Path,args,label):
         rc=subprocess.call(cmd,cwd=HERE,stdout=lf,stderr=subprocess.STDOUT)
     dt=time.time()-t0
     if rc!=0:
-        tail="".join(open(log_path).readlines()[-25:])
-        print(f"    FAILED (exit {rc}) after {dt:.0f}s. Last lines of {log_path}:\n{tail}",flush=True)
+        print(label,"exit",rc,log_path,flush=True)
         if not args.keep_going:
             raise SystemExit(1)
         return False
-    print(f"    done in {dt:.0f}s  (log: {log_path})",flush=True)
+    print(label,f"{dt:.0f}s",flush=True)
     return True
 
 def stage_ok(out_dir:Path,cfg:dict,done_file:str,args,honor_force=True):
@@ -76,8 +73,7 @@ def stage_ok(out_dir:Path,cfg:dict,done_file:str,args,honor_force=True):
     old=json.load(open(marker))
     if old!=json.loads(json.dumps(cfg)):
         diff={k:(old.get(k),cfg.get(k)) for k in set(old)|set(cfg) if old.get(k)!=cfg.get(k)}
-        raise SystemExit(f"{out_dir} was produced with different settings {diff}.\n"
- f"Use a new --out folder for the new settings (or --force to overwrite everything).")
+        raise SystemExit(f"{out_dir}: settings differ {diff}")
     return True
 
 def mark_done(out_dir:Path,cfg:dict,args):
@@ -95,14 +91,14 @@ def main():
     out=Path(args.out).resolve()
     cv_dir=root/"cv"
     if not (cv_dir/"folds.json").exists():
-        raise SystemExit(f"{cv_dir}/folds.json not found -- run make_group_split.py first.")
+        raise SystemExit(f"{cv_dir}/folds.json not found")
     k_total=json.load(open(cv_dir/"folds.json"))["k"]
     folds=list(range(k_total)) if args.folds=="all" else [int(x) for x in args.folds.split(",")]
     stages={s.strip() for s in args.stages.split(",")}
     methods=[m.strip() for m in args.methods.split(",") if m.strip()]
     bad=[m for m in methods if m not in METHODS]
     if bad:
-        raise SystemExit(f"Unknown method(s) {bad}; choose from {list(METHODS)}")
+        raise SystemExit(f"unknown method {bad}")
     seeds=[int(s) for s in args.seeds.split(",")]
     py=sys.executable
     dev=["--device",args.device] if args.device is not None else []
@@ -112,7 +108,7 @@ def main():
         data=cv_dir/f"fold{f}"/"data.yaml"
         fold_out=out/f"fold{f}"
         det_dir=fold_out/"detector"
-        print(f"\n{'=' * 78}\nFOLD {f}   data: {data}\n{'=' * 78}")
+        print("fold",f)
         det_cfg={"det_args":args.det_args,"data":str(data)}
         det_done=det_dir.exists() and find_best(det_dir) is not None and \
             stage_ok(det_dir,det_cfg,"stage_done.json",args)
@@ -129,7 +125,7 @@ def main():
                         if (fold_out/stale).exists():
                             shutil.rmtree(fold_out/stale)
             else:
-                print(f"fold {f}: detector already trained with these settings -> {best}")
+                print("fold",f,"detector",best)
             if best is None and args.dry_run:
                 best=Path("<best.pt>")
             if best is not None or args.dry_run:
@@ -143,7 +139,7 @@ def main():
                         fold_out/"logs"/f"detector_eval_{split}.log",args,
                         f"fold {f}: evaluate detector on {'held-out photos' if split == 'val' else 'official test'}")
         if best is None and not args.dry_run:
-            print(f"fold {f}: no COMPLETED detector for these settings; skipping patch stages.")
+            print("fold",f,"no detector")
             continue
         best=best or Path("<best.pt>")
         det_stamp=best.stat().st_mtime_ns if best.exists() else None
@@ -185,7 +181,6 @@ def main():
                         fold_out/"logs"/f"mapdrop_{tag}.log",args,f"fold {f}: mAP drop {tag}")
                     if ok:
                         mark_done(md_dir,e_cfg,args)
-    print("\nAll requested jobs finished. Next: python cv_analyze.py --out",out)
 
 if __name__=="__main__":
     main()

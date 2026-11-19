@@ -110,7 +110,7 @@ def load_detector(weights):
     return YOLO(weights)
 
 def raw_scores(model,x,tid,nc):
-    """Raw head output -> (centres [B,A,2] in input pixels, target-class score [B,A]), differentiable."""
+    """Raw head output ->."""
     out=model(x)
     if (isinstance(out,(tuple,list)) and len(out)==2 and isinstance(out[1],(tuple,list))
             and len(out[1])>=2 and torch.is_tensor(out[1][0]) and out[1][0].shape[-1]==4):
@@ -127,7 +127,7 @@ def raw_scores(model,x,tid,nc):
     return y[:,0:2,:].transpose(1,2),y[:,4+tid,:]
 
 def cpa_instance_score(centres,scores,box,score_thresh=0.05,conf=0.5):
-    """CPA code's per-object score: detections of the target class above score_thresh whose centre is inside the..."""
+    """CPA code's per-object score: detections of the target class above score_thresh whose centre is inside the object's box."""
     x0,y0,x1,y1=box
     inside=(centres[:,0]>=x0)&(centres[:,0]<=x1)&(centres[:,1]>=y0)&(centres[:,1]<=y1)
     s=scores[inside&(scores>score_thresh)]

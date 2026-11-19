@@ -69,7 +69,7 @@ class TV3d:
         return (self.len[None]*d).sum()/self.n
 
 def printable(tex,mesh_npz,res=620):
-    """Flat top view of the sheet (one colour per facet) -- the image to print, in the same orientation as it is..."""
+    """Flat top view of the sheet."""
     m=np.load(mesh_npz)
     v,f=m["verts"],m["faces"]
     t=(tex.detach().cpu().numpy().T*255).round().astype(np.uint8)

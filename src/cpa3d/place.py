@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from render import EXTENT
 
 def hull_from_box(box,aspect=1.95):
-    """box xyxy (px) -> (cx, cy, Wv, L, theta_rad) of the hull rectangle (theta = long-axis angle)."""
+    """box xyxy."""
     x0,y0,x1,y1=box
     w,h=x1-x0,y1-y0
     cx,cy=(x0+x1)/2,(y0+y1)/2

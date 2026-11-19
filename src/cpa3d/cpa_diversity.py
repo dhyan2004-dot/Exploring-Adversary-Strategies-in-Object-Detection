@@ -45,8 +45,7 @@ def main():
         return np.mean([[r[f"after_{c}_{v}"]<thr for c in conds] for r in det],1)
     L=[]
     P=L.append
-    P("# Diversity ablation: CPA gain with paper-like (fixed-view) vs our full-diversity training\n")
-    P("Surrogate = yolov8s (white-box); yolov8m, yolo11s, rtdetr = black-box. Seed-averaged (2 seeds).\n")
+    P("# CPA gain at low (fixed-view) and full training diversity, 2 seeds averaged\n")
     for thr in (0.5,0.25):
         P(f"\n## Threshold {thr}\n")
         D={t:[r for r in rows[t] if r["before_conf"]>=thr] for t in dets}

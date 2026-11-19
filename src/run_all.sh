@@ -16,14 +16,14 @@ export CUDA_VISIBLE_DEVICES="$GPU"
 
 for f in make_group_split.py cv_run.py cv_analyze.py patch_map_drop.py patch_evaluate.py patch_train.py \
          evaluate_yolov8.py train_yolov8.py dataset_utils.py photo_stats.py corruptions.py; do
-  [ -f "$f" ] || { echo "missing $f -- unzip the whole bundle here"; exit 1; }
+  [ -f "$f" ] || { echo "missing $f"; exit 1; }
 done
 python -m py_compile make_group_split.py cv_run.py cv_analyze.py patch_map_drop.py patch_evaluate.py \
   patch_train.py evaluate_yolov8.py train_yolov8.py dataset_utils.py photo_stats.py corruptions.py
 python -c "import ultralytics, torch; print('ultralytics', ultralytics.__version__, '| torch', torch.__version__, '| cuda', torch.cuda.is_available())"
 
 MODEL=$(python -c "import shlex,sys; a=shlex.split(sys.argv[1]); print(a[a.index('--model')+1] if '--model' in a else 'yolov8s.pt')" "$DET_ARGS")
-[ -f "$MODEL" ] || { echo "$MODEL not found in $(pwd) -- copy it here (no internet on this node)"; exit 1; }
+[ -f "$MODEL" ] || { echo "$MODEL not found"; exit 1; }
 
 (
   flock 9
@@ -34,12 +34,12 @@ MODEL=$(python -c "import shlex,sys; a=shlex.split(sys.argv[1]); print(a[a.index
 ) 9>"$ROOT/.cv_split.lock"
 
 if [ "${SMOKE:-0}" = "1" ]; then
-  echo "== smoke test (1 fold, 1 epoch each; numbers are meaningless) =="
+  echo "== smoke test =="
   python cv_run.py --root "$ROOT" --out cv_smoke --folds 0 \
     --det-args "--model yolov8s.pt --epochs 1 --imgsz 640 --batch 8 --workers 2" \
     --methods eot,cpa_ls --patch-epochs 1 --instances-per-epoch 40 --max-files-per-photo 1
   python cv_analyze.py --out cv_smoke
-  echo "Smoke test finished. Check cv_smoke/cv_report.md, then run again without SMOKE=1."
+  echo "cv_smoke/cv_report.md"
   exit 0
 fi
 
@@ -50,5 +50,5 @@ python cv_run.py --root "$ROOT" --out "$OUT" --folds "$FOLDS" \
 if [ "$FOLDS" = "all" ]; then
   python cv_analyze.py --out "$OUT"
 else
-  echo "Partial folds done. When all folds are finished, run:  python cv_analyze.py --out $OUT"
+  echo "folds done: $FOLDS"
 fi

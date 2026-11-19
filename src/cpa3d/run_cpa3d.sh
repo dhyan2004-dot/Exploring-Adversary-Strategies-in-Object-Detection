@@ -11,18 +11,18 @@
 # Env: ROOT (yolo_dataset with cv/), OUT (default cpa3d_runs), SURR_RUN (2-D fold detectors), BIGGAN (G_ema.pth).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$HERE/.."                                   # the YOLOv8 working directory
+cd "$HERE/.." # src/
 
 ROOT="${ROOT:-../data/Aerial Image Dataset/yolo_dataset}"
-SURR_RUN="${SURR_RUN:-cv_runs_e80}"              # surrogate detectors: $SURR_RUN/fold{k}/detector
+SURR_RUN="${SURR_RUN:-cv_runs_e80}" # surrogate detectors: $SURR_RUN/fold{k}/detector
 OUT="${OUT:-cpa3d_runs}"
-case "$OUT" in /*) ;; *) OUT="$(pwd)/$OUT" ;; esac   # Ultralytics puts relative projects under runs/detect
+case "$OUT" in /*) ;; *) OUT="$(pwd)/$OUT" ;; esac # Ultralytics puts relative projects under runs/detect
 PY="${PY:-python}"
 TARGET="${TARGET:-Tank}"
-TEX_EPOCHS="${TEX_EPOCHS:-10}"                   # paper: 10 epochs, SWA from epoch 6
+TEX_EPOCHS="${TEX_EPOCHS:-10}" # paper: 10 epochs, SWA from epoch 6
 TGT_COMMON="${TGT_COMMON:---epochs 15 --imgsz 960 --patience 5 --workers 4}"
-TEX_EXTRA="${TEX_EXTRA:-}"                       # extra cpa_train.py args (e.g. --max-files-per-photo 12)
-EVAL_EXTRA="${EVAL_EXTRA:-}"                     # extra cpa_eval.py args
+TEX_EXTRA="${TEX_EXTRA:-}" # extra cpa_train.py args (e.g. --max-files-per-photo 12)
+EVAL_EXTRA="${EVAL_EXTRA:-}" # extra cpa_eval.py args
 declare -A TGT=(
   [yolov8m]="--model yolov8m.pt --batch 16 --freeze 10 $TGT_COMMON"
   [yolo11s]="--model yolo11s.pt --batch 16 --freeze 10 $TGT_COMMON"
@@ -33,7 +33,7 @@ METHODS="cpa_none cpa_light cpa_shadow cpa_ls"
 
 surrogate() { ls "$SURR_RUN/fold$1"/detector/*/weights/best.pt 2>/dev/null | head -1; }
 
-fold_chain() {   # fold_chain <fold> -- everything for one fold, in order
+fold_chain() { # fold_chain <fold> -- everything for one fold, in order
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate in $SURR_RUN"; return 1; }
   mkdir -p "$fo/logs"
@@ -79,7 +79,7 @@ abl_args() {
   esac
 }
 
-abl_eval() {   # abl_eval <fold> <eval dir> <patch m> <method>...
+abl_eval() { # abl_eval <fold> <eval dir> <patch m> <method>...
   local k=$1 ed=$2 pm=$3; shift 3
   local data="$ROOT/cv/fold$k/data.yaml" fo="$OUT/fold$k" s meth=() dets
   s=$(surrogate "$k"); dets=("surrogate=$s")
@@ -92,13 +92,13 @@ abl_eval() {   # abl_eval <fold> <eval dir> <patch m> <method>...
       > "$fo/logs/$ed.log" 2>&1 || { echo "FAILED $ed fold $k"; return 1; }
 }
 
-abl_chain() {   # abl_chain <fold>
+abl_chain() { # abl_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   for t in yolov8m yolo11s rtdetr; do
-    [ -f "$fo/targets/$t/done" ] || { echo "fold $k: target $t missing -- finish 'all' first"; return 1; }; done
+    [ -f "$fo/targets/$t/done" ] || { echo "fold $k: target $t missing"; return 1; }; done
   for m in cpa_none cpa_ls; do
-    [ -f "$fo/textures/$m/stage_done.json" ] || { echo "fold $k: $m missing -- finish 'all' first"; return 1; }; done
+    [ -f "$fo/textures/$m/stage_done.json" ] || { echo "fold $k: $m missing"; return 1; }; done
   for m in $ABL_METHODS; do
     if [ -f "$fo/textures/$m/stage_done.json" ]; then echo "fold $k $m: done"; continue; fi
     echo "fold $k: texture $m  $(date +%T)"
@@ -112,15 +112,15 @@ abl_chain() {   # abl_chain <fold>
   echo "fold $k: ABLATION DONE $(date +%T)"
 }
 
-BIGGAN="${BIGGAN:-$(pwd)/pretrained/generators/BigGAN/G_ema.pth}"   # from the authors' pretrained_biggan.tar
+BIGGAN="${BIGGAN:-$(pwd)/pretrained/generators/BigGAN/G_ema.pth}" # from the authors' pretrained_biggan.tar
 GAN_CLASS="${GAN_CLASS:-259}"
 NPA_EXTRA="${NPA_EXTRA:-}"
 
-npa_chain() {   # npa_chain <fold>
+npa_chain() { # npa_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   for t in yolov8m yolo11s rtdetr; do
-    [ -f "$fo/targets/$t/done" ] || { echo "fold $k: target $t missing -- finish 'all' first"; return 1; }; done
+    [ -f "$fo/targets/$t/done" ] || { echo "fold $k: target $t missing"; return 1; }; done
   mkdir -p "$fo/logs"
   for m in npa pixel; do
     if [ -f "$fo/textures/$m/stage_done.json" ]; then echo "fold $k $m: done"; continue; fi
@@ -140,10 +140,10 @@ npa_chain() {   # npa_chain <fold>
   echo "fold $k: NPA DONE $(date +%T)"
 }
 
-NPA_CLASSES="${NPA_CLASSES:-977 958}"            # 977 sandbar (terrain), 958 hay (vegetation)
-GPUS="${GPUS:-0 1 2 3}"                          # GPUs to spread the folds over
+NPA_CLASSES="${NPA_CLASSES:-977 958}" # 977 sandbar (terrain), 958 hay (vegetation)
+GPUS="${GPUS:-0 1 2 3}" # GPUs to spread the folds over
 
-npacls_chain() {   # npacls_chain <fold>
+npacls_chain() { # npacls_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s c meth dets w
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -154,9 +154,9 @@ npacls_chain() {   # npacls_chain <fold>
         --biggan-weights "$BIGGAN" --gan-class "$c" --mesh "$HERE/aux_mesh.npz" \
         --out "$fo/textures/npa_c$c" $NPA_EXTRA > "$fo/logs/tex_npa_c$c.log" 2>&1 || { echo "FAILED npa_c$c fold $k"; return 1; }
   done
-  for w in $(seq 1 120); do                        # the class-259 NPA + pixel run of this fold must be finished
+  for w in $(seq 1 120); do # the class-259 NPA + pixel run of this fold must be finished
     [ -f "$fo/textures/npa/stage_done.json" ] && [ -f "$fo/textures/pixel/stage_done.json" ] && break
-    [ $w = 1 ] && echo "fold $k: waiting for npa/pixel of the first NPA run"; sleep 60
+    [ $w = 1 ] && echo "fold $k: waiting for npa/pixel"; sleep 60
   done
   [ -f "$fo/textures/pixel/stage_done.json" ] || { echo "FAILED fold $k: npa/pixel never finished"; return 1; }
   if [ -f "$fo/eval_npa_cls/stage_done.json" ]; then echo "fold $k eval_npa_cls: done"; return 0; fi
@@ -171,7 +171,7 @@ npacls_chain() {   # npacls_chain <fold>
   echo "fold $k: NPA CLASSES DONE $(date +%T)"
 }
 
-launch_spread() {   # launch_spread <chain function> <log prefix>: folds 0-4 round-robin over $GPUS
+launch_spread() { # launch_spread <chain function> <log prefix>: folds 0-4 round-robin over $GPUS
   local fn=$1 name=$2 g i=0; local -a gl=($GPUS); declare -A F=()
   for k in 0 1 2 3 4; do g=${gl[$((i % ${#gl[@]}))]}; F[$g]="${F[$g]:-} $k"; i=$((i + 1)); done
   mkdir -p "$OUT/logs"
@@ -182,12 +182,12 @@ launch_spread() {   # launch_spread <chain function> <log prefix>: folds 0-4 rou
   done
 }
 
-TR_SURR="${TR_SURR:-yolov8m yolo11s rtdetr}"     # extra surrogates (yolov8s = the main runs)
+TR_SURR="${TR_SURR:-yolov8m yolo11s rtdetr}" # extra surrogates (yolov8s = the main runs)
 TR_ATTACKS="${TR_ATTACKS:-cpa_none cpa_ls npa}"
-TR_CONDS="${TR_CONDS:-none}"                     # test conditions for the matrix (paper: clean images)
-TR_NPA_MAIN="${TR_NPA_MAIN:-npa}"                # YOLOv8s NPA patch used in the matrix (e.g. npa_c977_t4)
+TR_CONDS="${TR_CONDS:-none}" # test conditions for the matrix (paper: clean images)
+TR_NPA_MAIN="${TR_NPA_MAIN:-npa}" # YOLOv8s NPA patch used in the matrix (e.g. npa_c977_t4)
 
-tr_chain() {   # tr_chain <fold>
+tr_chain() { # tr_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s sw a d meth dets w
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -208,7 +208,7 @@ tr_chain() {   # tr_chain <fold>
       esac > "$fo/logs/tex_${a}__$sn.log" 2>&1 || { echo "FAILED ${a}__$sn fold $k"; return 1; }
     done
   done
-  for w in $(seq 1 180); do                        # main-run npa of this fold must exist
+  for w in $(seq 1 180); do # main-run npa of this fold must exist
     case " $TR_ATTACKS " in *" npa "*) ;; *) break ;; esac
     [ -f "$fo/textures/$TR_NPA_MAIN/stage_done.json" ] && break
     [ $w = 1 ] && echo "fold $k: waiting for textures/$TR_NPA_MAIN"; sleep 60
@@ -227,9 +227,9 @@ tr_chain() {   # tr_chain <fold>
   echo "fold $k: TRANSFER DONE $(date +%T)"
 }
 
-NPA_GRID="${NPA_GRID:-259:2 259:4 977:4 958:4}"   # class:tau  (main NPA run = 259:10)
+NPA_GRID="${NPA_GRID:-259:2 259:4 977:4 958:4}" # class:tau  (main NPA run = 259:10)
 
-npatau_chain() {   # npatau_chain <fold>
+npatau_chain() { # npatau_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s c t ct d meth dets w
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -269,7 +269,7 @@ nat_args() {
   esac
 }
 
-nat_chain() {   # nat_chain <fold>
+nat_chain() { # nat_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s v d meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -306,7 +306,7 @@ div_args() {
   esac
 }
 
-div_chain() {   # div_chain <fold>
+div_chain() { # div_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s v d meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   for v in cpa_none cpa_ls cpa_none_s1 cpa_ls_s1; do
@@ -344,7 +344,7 @@ nat2_args() {
   esac
 }
 
-nat2_chain() {   # nat2_chain <fold>
+nat2_chain() { # nat2_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s v d meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -378,7 +378,7 @@ nat2_chain() {   # nat2_chain <fold>
 SWEEP_BUDGETS="${SWEEP_BUDGETS:-5 10 20 40 100}"
 NPA_NAT_ARGS="--mode npa --gan-class 977 --tau 3 --z-proj sphere --natural-stop 20"
 
-sweep_chain() {   # sweep_chain <fold>
+sweep_chain() { # sweep_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s b meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   [ -f "$fo/textures/npa_stop/stage_done.json" ] || { echo "FAILED fold $k: npa_stop missing (natural2)"; return 1; }
@@ -396,7 +396,7 @@ sweep_chain() {   # sweep_chain <fold>
   echo "fold $k: SWEEP DONE $(date +%T)"
 }
 
-trnat_chain() {   # trnat_chain <fold>
+trnat_chain() { # trnat_chain <fold>
   local k=$1 data="$ROOT/cv/fold$1/data.yaml" fo="$OUT/fold$1" s sn sw d a meth dets
   s=$(surrogate "$k"); [ -n "$s" ] || { echo "fold $k: no surrogate"; return 1; }
   mkdir -p "$fo/logs"
@@ -451,7 +451,7 @@ case "${1:-}" in
         --epochs 2 --swa-start 1 --max-steps 3 --n-views 16 --mesh "$HERE/aux_mesh.npz" --out $o/tex
     CUDA_VISIBLE_DEVICES=${GPU:-0} $PY "$HERE/cpa_eval.py" --data "$d" --methods smoke=$o/tex --detectors surrogate="$s" \
         --max-files-per-photo 1 --n-views 16 --mesh "$HERE/aux_mesh.npz" --out $o/eval
-    echo "SMOKE OK -- look at $o/tex/examples/ and $o/eval/examples/"
+    echo "SMOKE OK"
     ;;
   all)
     mkdir -p "$OUT/logs"
@@ -485,17 +485,17 @@ case "${1:-}" in
     $PY "$HERE/cpa_ablation.py" --runs "$OUT"
     ;;
   npa_smoke)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     s=$(surrogate 0); d="$ROOT/cv/fold0/data.yaml"; o=npa_smoke; rm -rf $o
     for m in npa pixel; do
       CUDA_VISIBLE_DEVICES=${GPU:-0} $PY "$HERE/npa_train.py" --mode $m --data "$d" --weights "$s" \
           --biggan-weights "$BIGGAN" --gan-class "$GAN_CLASS" --epochs 2 --max-steps 3 --n-views 16 \
           --mesh "$HERE/aux_mesh.npz" --out $o/$m || exit 1
     done
-    echo "NPA SMOKE OK -- look at $o/npa/patch_init_vs_final.png (should look like a natural photo)"
+    echo "NPA SMOKE OK"
     ;;
   npa)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     mkdir -p "$OUT/logs"
     for g in 0 1 2 3; do
       folds="$g"; [ $g = 0 ] && folds="0 4"
@@ -518,7 +518,7 @@ case "${1:-}" in
     $PY "$HERE/cpa_analyze.py" --runs "$OUT" --eval-dir eval_npa --baseline npa --report-name npa_report
     ;;
   npa_classes)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     echo "classes: $NPA_CLASSES   GPUs: $GPUS"
     launch_spread npacls_chain npacls
     ;;
@@ -536,7 +536,7 @@ case "${1:-}" in
     $PY "$HERE/cpa_analyze.py" --runs "$OUT" --eval-dir eval_npa_cls --baseline npa --report-name npa_classes_report
     ;;
   npa_tau)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     echo "grid (class:tau): $NPA_GRID   GPUs: $GPUS"
     launch_spread npatau_chain npatau
     ;;
@@ -573,7 +573,7 @@ case "${1:-}" in
     $PY "$HERE/cpa_analyze.py" --runs "$OUT" --eval-dir eval_natural --baseline cpa_none --report-name natural_report
     ;;
   natural2)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     echo "1 m: $NAT2_1M | 3 m: $NAT2_3M | GPUs: $GPUS"
     launch_spread nat2_chain natural2
     ;;
@@ -596,7 +596,7 @@ case "${1:-}" in
     launch_spread sweep_chain sweep
     ;;
   trnat)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     launch_spread trnat_chain trnat
     ;;
   sweep_trnat_status)
@@ -633,7 +633,7 @@ case "${1:-}" in
     $PY "$HERE/cpa_diversity.py" --runs "$OUT"
     ;;
   transfer)
-    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found at $BIGGAN (set BIGGAN=...)"; exit 1; }
+    [ -f "$BIGGAN" ] || { echo "BigGAN weights not found: $BIGGAN"; exit 1; }
     echo "surrogates: yolov8s(main) $TR_SURR | attacks: $TR_ATTACKS | GPUs: $GPUS"
     launch_spread tr_chain transfer
     ;;
@@ -651,7 +651,7 @@ case "${1:-}" in
   transfer_report)
     $PY "$HERE/cpa_transfer.py" --runs "$OUT"
     ;;
-  lib) ;;                                         # sourced by the workers
+  lib) ;; # sourced by the workers
   status)
     echo "workers running: $( (pgrep -u "${USER:-$(id -un)}" -f 'run_cpa3d.sh. lib' || true) | wc -l)"
     for k in 0 1 2 3 4; do
@@ -665,7 +665,7 @@ case "${1:-}" in
     ;;
   report)
     $PY "$HERE/cpa_analyze.py" --runs "$OUT"
-    echo; echo "Clean val mAP50 of the black-box targets (surrogate: see $SURR_RUN):"
+    echo; echo "black-box detectors, held-out mAP50:"
     $PY - "$OUT" <<'PYEOF'
 import json, sys, glob, statistics as st
 from collections import defaultdict

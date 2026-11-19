@@ -27,10 +27,10 @@ FILENAME_KEYWORDS={
 }
 
 DECIMALS=6 # precision for cleaned label coordinates
-MIN_BOX_FRACTION=0.003 # reject boxes narrower/shorter than this fraction of the image
+MIN_BOX_FRACTION=0.003
 
 def find_split_dirs(root:Path)->dict:
-    """Return {'train': Path, 'val': Path, 'test': Path} for whichever splits are present under root."""
+    """Return {'train': Path."""
     patterns={
         "train":re.compile(r"train",re.I),
         "val":re.compile(r"valid",re.I),
@@ -130,11 +130,10 @@ def process_split(split_name:str,images_dir:Path,labels_dir:Path,
                     break
         out_label_path.write_text("\n".join(cleaned)+("\n" if cleaned else ""))
     stats["missing_labels"]+=n_missing_label
-    print(f"  [{split_name}] {n_images} images, {n_boxes} boxes "
- f"({n_missing_label} images had no label file -> treated as background)")
+    print(split_name,"images",n_images,"boxes",n_boxes,"unlabelled",n_missing_label)
 
 def derive_class_names(class_votes:Counter)->dict:
-    """Pick the best-voted name for each class id; fall back to the hardcoded default for any id with no evidence."""
+    """Pick the best-voted name for each class id."""
     tally=defaultdict(Counter)
     for (cls_id,family),n in class_votes.items():
         tally[cls_id][family]+=n
@@ -153,9 +152,6 @@ def main():
     splits=find_split_dirs(DATASET_ROOT)
     if not splits:
         raise SystemExit(f"Could not find any Training/Validation/Testing folders under {DATASET_ROOT}")
-    print("Discovered splits:")
-    for k,v in splits.items():
-        print(f"  {k:5s} -> {v}")
     stats={
         "polygon_converted":0,
         "bad_lines":[],
@@ -166,14 +162,12 @@ def main():
     }
     class_votes=Counter()
     if OUTPUT_DIR.exists():
-        print(f"\nRemoving existing {OUTPUT_DIR} to rebuild it fresh...")
         shutil.rmtree(OUTPUT_DIR)
-    print("\nProcessing splits...")
     for split_name,split_dir in splits.items():
         images_dir=find_subdir(split_dir,re.compile("image",re.I))
         labels_dir=find_subdir(split_dir,re.compile("label",re.I))
         if images_dir is None or labels_dir is None:
-            print(f"  [{split_name}] SKIPPED -- could not find Images/Labels subfolders in {split_dir}")
+            print(split_name,"skipped")
             continue
         process_split(
             split_name,images_dir,labels_dir,
@@ -193,34 +187,13 @@ def main():
     yaml_path=OUTPUT_DIR/"data.yaml"
     with open(yaml_path,"w") as f:
         yaml.dump(data_yaml,f,sort_keys=False)
-    print("\n"+"="*70)
-    print("SUMMARY")
-    print("="*70)
-    print(f"Class mapping used (verified against filename prefixes where possible):")
     for i in range(NUM_CLASSES):
-        evidence=sum(n for (cid,fam),n in class_votes.items() if cid==i)
-        tag="auto-verified" if evidence else "fallback default, please double check"
-        print(f"  {i}: {class_names[i]:<15s} ({tag})")
-    print(f"\nPolygon/OBB-format lines converted to axis-aligned boxes: {stats['polygon_converted']}")
-    print(f"Images with no label file (treated as background):        {stats['missing_labels']}")
-    print(f"Orphan label files (no matching image, skipped):          {len(stats['orphan_labels'])}")
-    if stats["orphan_labels"]:
-        for x in stats["orphan_labels"][:10]:
-            print(f"    - {x}")
-    print(f"Malformed lines skipped:                                  {len(stats['bad_lines'])}")
-    print(f"Degenerate (near-zero-area) boxes skipped:                {len(stats['degenerate_boxes'])}")
-    if stats["degenerate_boxes"]:
-        for x in stats["degenerate_boxes"][:10]:
-            print(f"    - {x}")
-    if stats["bad_lines"]:
-        for x in stats["bad_lines"][:10]:
-            print(f"    - {x}")
-    print("\nBox counts per class (across all processed splits):")
-    for i in range(NUM_CLASSES):
-        print(f"  {i} ({class_names[i]}): {stats['class_counts'][i]}")
-    print(f"\nClean dataset written to: {OUTPUT_DIR}")
-    print(f"data.yaml written to:     {yaml_path}")
-    print("\nNext step: run train_yolov8.py")
+        print(i,class_names[i],stats["class_counts"][i])
+    for k in ("polygon_converted","missing_labels"):
+        print(k,stats[k])
+    for k in ("orphan_labels","bad_lines","degenerate_boxes"):
+        print(k,len(stats[k]))
+    print(yaml_path)
 
 if __name__=="__main__":
     main()

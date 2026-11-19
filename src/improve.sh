@@ -10,11 +10,11 @@ declare -A DET=(
   [cv_s1280]="--model yolov8s.pt $COMMON"
   [cv_dota1280]="--model yolov8s.yaml --init-weights yolov8s-obb.pt $COMMON"
 )
-PATCH_EPOCHS="${PATCH_EPOCHS:-50}"     # the 80-epoch run plateaued from ~epoch 30
+PATCH_EPOCHS="${PATCH_EPOCHS:-50}" # the 80-epoch run plateaued from ~epoch 30
 SEEDS="${SEEDS:-0,1}"
 METHODS="eot cpa_light cpa_shadow cpa_ls"
 
-launch() {   # launch <gpu> <out> <folds> <logname> <extra cv_run args...>
+launch() { # launch <gpu> <out> <folds> <logname> <extra cv_run args...>
   local g=$1 out=$2 folds=$3 name=$4; shift 4
   local cmd=(python cv_run.py --root "$ROOT" --out "$out" --folds "$folds" --det-args "${DET[$out]}" "$@")
   if [ "${DRY:-0}" = "1" ]; then echo "GPU $g: ${cmd[*]}"; return; fi
@@ -25,7 +25,7 @@ launch() {   # launch <gpu> <out> <folds> <logname> <extra cv_run args...>
 
 case "${1:-}" in
   detectors)
-    [ -f yolov8s-obb.pt ] || { echo "yolov8s-obb.pt missing -- copy it into $(pwd)"; exit 1; }
+    [ -f yolov8s-obb.pt ] || { echo "yolov8s-obb.pt missing"; exit 1; }
     [ -f yolov8s.pt ] || { echo "yolov8s.pt missing"; exit 1; }
     [ -f "$ROOT/cv/folds.json" ] || { echo "folds missing: $ROOT/cv/folds.json"; exit 1; }
     launch 0 cv_s1280    0,4 det_f0_4 --stages detector

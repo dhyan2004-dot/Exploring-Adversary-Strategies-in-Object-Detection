@@ -33,7 +33,7 @@ def dome_heights(xy,height):
     return height*(1-(2*x)**2)*(1-(2*y)**2)
 
 def load_model_triangles(path):
-    import trimesh # only needed for --model (run this step where trimesh is installed)
+    import trimesh
     scene=trimesh.load(path,force="scene")
     mesh=trimesh.util.concatenate([g for g in scene.dump() if hasattr(g,"triangles")])
     tri=np.asarray(mesh.triangles,dtype=np.float64) # [T,3,3]
@@ -76,7 +76,7 @@ def drape_on_model(tri,n,roof_fraction,up_axis):
         if hit.any():
             z[k]=(o[2]-t[hit]).max()
     if np.isinf(z).any():
-        raise SystemExit("Some rays missed the model; lower --roof-fraction or check --up-axis.")
+        raise SystemExit("rays missed the model")
     z=(z-z.min())/side # heights in patch units, lowest point = 0
     return z
 

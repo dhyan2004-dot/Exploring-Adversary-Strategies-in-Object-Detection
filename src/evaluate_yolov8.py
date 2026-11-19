@@ -35,22 +35,20 @@ def parse_args():
     p.add_argument("--data",type=str,default=str(DEFAULT_DATA_YAML))
     p.add_argument("--weights",type=str,default=str(DEFAULT_WEIGHTS))
     p.add_argument("--split",type=str,default="test",choices=["train","val","test"],
-                    help="Which split in data.yaml to evaluate on.")
+                    help="Which split in data.yaml to evaluate on")
     p.add_argument("--imgsz",type=int,default=None,
-                    help="Must match the imgsz the weights were trained with, or accuracy will suffer. "
- "If omitted, this script tries to auto-detect it from the checkpoint; "
- "falls back to 640 with a warning if that fails.")
+                    help="Must match the imgsz the weights were trained with, or accuracy will suffer")
     p.add_argument("--conf",type=float,default=0.001,
-                    help="Confidence threshold used for computing mAP (kept low, standard practice).")
+                    help="Confidence threshold used for computing mAP")
     p.add_argument("--pred-conf",type=float,default=0.25,
-                    help="Confidence threshold used only for the saved qualitative prediction images.")
+                    help="Confidence threshold used only for the saved qualitative prediction images")
     p.add_argument("--device",type=str,default=None)
     p.add_argument("--project",type=str,default="runs/detect")
     p.add_argument("--name",type=str,default="baseline_eval")
     p.add_argument("--no-predictions",action="store_true",
-                   help="Skip saving annotated prediction images (use for cross-validation runs).")
+                   help="Skip saving annotated prediction images")
     p.add_argument("--out-dir",type=str,default="clean_baseline_report",
-                    help="Where to write the metrics CSV/JSON summary.")
+                    help="Where to write the metrics CSV/JSON summary")
     return p.parse_args()
 
 def main():
@@ -58,36 +56,27 @@ def main():
     data_yaml=Path(args.data)
     weights=Path(args.weights)
     if not data_yaml.exists():
-        raise SystemExit(f"Could not find {data_yaml}. Run prepare_dataset.py first.")
+        raise SystemExit(f"{data_yaml} not found")
     if not weights.exists():
-        raise SystemExit(f"Could not find weights at {weights}. Run train_yolov8.py first, "
- f"or pass --weights pointing at your best.pt")
+        raise SystemExit(f"{weights} not found")
     with open(data_yaml) as f:
         data_cfg=yaml.safe_load(f)
     if args.split not in data_cfg:
-        raise SystemExit(f"data.yaml has no '{args.split}' split defined. "
- f"Available: {[k for k in ('train','val','test') if k in data_cfg]}")
+        raise SystemExit(f"no '{args.split}' split in data.yaml")
     if args.imgsz is not None:
         imgsz=args.imgsz
     else:
         detected=detect_training_imgsz(weights)
         if detected is not None:
             imgsz=detected
-            print(f"Auto-detected training imgsz={imgsz} from the checkpoint; using it for evaluation.")
         else:
             imgsz=640
-            print("WARNING: could not auto-detect training imgsz from the checkpoint -- "
- "defaulting to 640. If you trained with a different --imgsz, evaluating at "
- "the wrong resolution will silently tank your metrics (this is exactly what "
- "happened when a 960-trained model got evaluated at the 640 default). "
- "Pass --imgsz explicitly to be safe.")
     _m=torch.load(str(weights),map_location="cpu",weights_only=False).get("model")
     if _m is not None and any(type(x).__name__=="RTDETRDecoder" for x in _m.modules()):
         from ultralytics import RTDETR # RT-DETR needs its own predictor/validator
         model=RTDETR(str(weights))
     else:
         model=YOLO(str(weights))
-    print(f"Evaluating on '{args.split}' split...")
     results=model.val(
         data=str(data_yaml),
         split=args.split,
@@ -97,7 +86,7 @@ def main():
         project=args.project,
         name=args.name,
         plots=True, # saves confusion matrix, PR curve, F1 curve etc.
-        save_json=False, # True makes Ultralytics try to pip-install faster-coco-eval (no internet -> ~13 min stall)
+        save_json=False, # avoids an extra package install
         exist_ok=True,
     )
     names=results.names # {id: name}
@@ -121,17 +110,9 @@ def main():
             "AP50":float(box.ap50[idx]),
             "AP50-95":float(box.ap[idx]),
         })
-    print("\n"+"="*70)
-    print(f"CLEAN BASELINE -- {args.split.upper()} SET")
-    print("="*70)
-    print(f"Precision (mean): {overall['precision(mean)']:.4f}")
-    print(f"Recall    (mean): {overall['recall(mean)']:.4f}")
-    print(f"mAP50           : {overall['mAP50']:.4f}")
-    print(f"mAP50-95        : {overall['mAP50-95']:.4f}")
-    print("\nPer-class:")
-    header=f"{'class':<16}{'precision':>10}{'recall':>10}{'AP50':>10}{'AP50-95':>10}"
-    print(header)
-    print("-"*len(header))
+    print(f"{'class':<16}{'precision':>10}{'recall':>10}{'AP50':>10}{'AP50-95':>10}")
+    print(f"{'all':<16}{overall['precision(mean)']:>10.4f}{overall['recall(mean)']:>10.4f}"
+ f"{overall['mAP50']:>10.4f}{overall['mAP50-95']:>10.4f}")
     for row in per_class:
         print(f"{row['name']:<16}{row['precision']:>10.4f}{row['recall']:>10.4f}"
  f"{row['AP50']:>10.4f}{row['AP50-95']:>10.4f}")
@@ -141,13 +122,10 @@ def main():
         writer=csv.DictWriter(f,fieldnames=["class_id","name","precision","recall","AP50","AP50-95"])
         writer.writeheader()
         writer.writerows(per_class)
-    print(f"\nMetrics saved to: {out_dir / f'{args.split}_metrics.json'} and .csv")
-    print(f"Plots (confusion matrix, PR/F1 curves) saved under: {Path(args.project) / args.name}")
     if args.no_predictions:
         return
     split_rel=data_cfg[args.split]
     images_dir=Path(data_cfg["path"])/split_rel
-    print(f"\nSaving annotated qualitative predictions for images in {images_dir} ...")
     model.predict(
         source=str(images_dir),
         imgsz=imgsz,
@@ -158,7 +136,6 @@ def main():
         name=f"{args.name}_predictions",
         exist_ok=True,
     )
-    print(f"Annotated prediction images saved under: {Path(args.project) / (args.name + '_predictions')}")
 
 if __name__=="__main__":
     main()

@@ -26,58 +26,45 @@ def parse_args():
     p.add_argument("--data",type=str,default=str(DEFAULT_DATA_YAML))
     p.add_argument("--weights",type=str,required=True,help="Path to your fine-tuned best.pt")
     p.add_argument("--target-class",type=str,default="Military Truck",
-                    help="Class name (as in data.yaml) or integer class id to attack.")
+                    help="Class name (as in data.yaml) or integer class id to attack")
     p.add_argument("--split",type=str,default="train",choices=["train","val","test","dev_val"],
-                    help="Which image set to optimize the patch against. 'train' (default) is standard -- "
- "the patch should generalize to unseen instances of the class, same as the model does.")
+                    help="Which image set to optimize the patch against")
     p.add_argument("--crop-resolution",type=int,default=320,
-                    help="Each object crop is resized to this (square) resolution before the forward pass. "
- "Must be divisible by 32. Independent of the detector's own training imgsz -- "
- "YOLOv8 is fully convolutional and handles any valid input size.")
+                    help="Each object crop is resized to this")
     p.add_argument("--crop-context",type=float,default=2.5,
-                    help="Crop size as a multiple of the target object's largest dimension -- e.g. 2.5 means "
- "the crop is 2.5x the object's size, giving it room plus some surrounding context. "
- "Lower this if dense scenes are pulling neighboring instances of the same class into "
- "the crop (which would dilute the loss the same way full-image training did).")
+                    help="Crop size as a multiple of the target object's largest dimension")
     p.add_argument("--min-crop-px",type=int,default=64,
-                    help="Floor on crop size in source-image pixels, for very small objects.")
+                    help="Floor on crop size in source-image pixels, for very small objects")
     p.add_argument("--max-crop-px",type=int,default=1600,
-                    help="Ceiling on crop size in source-image pixels, for very large objects.")
-    p.add_argument("--patch-size",type=int,default=128,help="Patch resolution in pixels (square).")
+                    help="Ceiling on crop size in source-image pixels, for very large objects")
+    p.add_argument("--patch-size",type=int,default=128,help="Patch resolution in pixels (square)")
     p.add_argument("--patch-scale",type=float,default=0.3,
-                    help="Patch width as a fraction of the target object's bounding-box width.")
+                    help="Patch width as a fraction of the target object's bounding-box width")
     p.add_argument("--epochs",type=int,default=30)
-    p.add_argument("--batch-size",type=int,default=8,help="Instance-crops per step.")
+    p.add_argument("--batch-size",type=int,default=8,help="Instance-crops per step")
     p.add_argument("--max-instances",type=int,default=None,
-                    help="Cap the instance pool to the first N in filename order (quick smoke tests only -- "
- "this is NOT a random sample).")
+                    help="Cap the instance pool to the first N in filename order")
     p.add_argument("--instances-per-epoch",type=int,default=None,
-                    help="Randomly sample this many instances from the full pool each epoch, to cap epoch "
- "time. A different random subset is drawn every epoch.")
+                    help="Randomly sample this many instances from the full pool each epoch, to cap epoch time")
     p.add_argument("--min-clean-conf",type=float,default=0.25,
-                    help="Only instances the detector already detects WITHOUT a patch (peak class confidence "
- ">= this) contribute to the loss. Training on instances the detector doesn't see "
- "anyway gives a meaningless gradient.")
+                    help="Only instances the detector already detects WITHOUT a patch")
     p.add_argument("--lr",type=float,default=0.01)
     p.add_argument("--tv-weight",type=float,default=0.005)
     p.add_argument("--corrupt",type=str,default="",
-                    help="CPA mode. Comma-separated corruptions to apply to the patch during training "
- "(from: light,shadow,rain,mud, or 'all'). Empty (default) = standard EOT patch with "
- "no corruption, i.e. the baseline.")
+                    help="CPA mode")
     p.add_argument("--corrupt-prob",type=float,default=0.8,
-                    help="Probability that a given training step's patch is corrupted at all (the rest see the "
- "clean patch, so it still works uncorrupted). 1-2 corruption types are stacked when it is.")
-    p.add_argument("--rotate-deg",type=float,default=20.0,help="Max +/- rotation in degrees (EOT).")
-    p.add_argument("--scale-jitter",type=float,default=0.2,help="+/- fractional scale jitter (EOT).")
-    p.add_argument("--brightness-jitter",type=float,default=0.15,help="+/- additive brightness jitter (EOT).")
-    p.add_argument("--contrast-jitter",type=float,default=0.15,help="+/- multiplicative contrast jitter (EOT).")
+                    help="Probability that a given training step's patch is corrupted at all")
+    p.add_argument("--rotate-deg",type=float,default=20.0,help="Max +/- rotation in degrees (EOT)")
+    p.add_argument("--scale-jitter",type=float,default=0.2,help="+/- fractional scale jitter (EOT)")
+    p.add_argument("--brightness-jitter",type=float,default=0.15,help="+/- additive brightness jitter (EOT)")
+    p.add_argument("--contrast-jitter",type=float,default=0.15,help="+/- multiplicative contrast jitter (EOT)")
     p.add_argument("--device",type=str,default=None)
     p.add_argument("--seed",type=int,default=42)
     p.add_argument("--output-dir",type=str,default="patch_runs/standard_eot")
     return p.parse_args()
 
 def load_target_class_instances(images_dir:Path,labels_dir:Path,target_id:int,max_instances=None):
-    """Returns a list of (image_path, (xc,yc,w,h)) -- one entry per instance of target_id, since each instance..."""
+    """Returns a list of."""
     samples=[]
     for label_file in sorted(labels_dir.glob("*.txt")):
         if "_dup" in label_file.stem:
@@ -99,7 +86,7 @@ def load_target_class_instances(images_dir:Path,labels_dir:Path,target_id:int,ma
     return samples
 
 def compute_crop_window(xc,yc,w,h,img_w,img_h,context,min_px,max_px):
-    """Square crop window (in source-image pixel coords) centered on the object, sized to `context` times its..."""
+    """Square crop window."""
     obj_px=max(w*img_w,h*img_h)
     crop_px=int(round(min(max(obj_px*context,min_px),max_px,min(img_w,img_h))))
     crop_px=max(crop_px,1)
@@ -111,7 +98,7 @@ def compute_crop_window(xc,yc,w,h,img_w,img_h,context,min_px,max_px):
     return x0,y0,crop_px
 
 def load_crop_tensor_and_box(img_path:Path,box,crop_res:int,context:float,min_px:int,max_px:int):
-    """Loads the source image, crops a context window around `box`, resizes to crop_res, and returns (crop_tensor..."""
+    """Loads the source image."""
     img=Image.open(img_path).convert("RGB")
     img_w,img_h=img.size
     xc,yc,w,h=box
@@ -124,7 +111,7 @@ def load_crop_tensor_and_box(img_path:Path,box,crop_res:int,context:float,min_px
     return arr,box_in_crop
 
 def rotate_patch(patch:torch.Tensor,angle_deg:float):
-    """Rotate a [3,S,S] patch about its center via grid_sample; returns the rotated patch plus a same-size mask..."""
+    """Rotate a [3,S,S] patch about its center via grid_sample."""
     device=patch.device
     theta=math.radians(angle_deg)
     cos_t,sin_t=math.cos(theta),math.sin(theta)
@@ -184,7 +171,7 @@ def apply_patch_to_image(image:torch.Tensor,patch:torch.Tensor,box,args):
     return image*(1-padded_mask)+padded_patch*padded_mask
 
 def extract_class_confidence(raw_pred:torch.Tensor,class_id:int,num_classes:int):
-    """Find the (4+num_classes)-sized channel axis in the raw YOLO prediction tensor regardless of its exact..."""
+    """Find the."""
     target_c=4+num_classes
     channel_axis=None
     for i,d in enumerate(raw_pred.shape):
@@ -214,7 +201,6 @@ def main():
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     device=args.device or ("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
     with open(args.data) as f:
         data_cfg=yaml.safe_load(f)
     names=data_cfg["names"]
@@ -224,20 +210,15 @@ def main():
         target_id=int(args.target_class)
     else:
         if args.target_class not in name_to_id:
-            raise SystemExit(f"'{args.target_class}' not found in data.yaml names: {list(names.values())}")
+            raise SystemExit(f"unknown class {args.target_class}")
         target_id=name_to_id[args.target_class]
-    print(f"Target class: {names[target_id]} (id={target_id})")
     kinds=KINDS if args.corrupt.strip().lower()=="all" else [k.strip() for k in args.corrupt.split(",") if k.strip()]
     bad=[k for k in kinds if k not in KINDS]
     if bad:
-        raise SystemExit(f"Unknown --corrupt value(s) {bad}; choose from {KINDS} or 'all'.")
+        raise SystemExit(f"unknown corruption {bad}")
     args.corruptor=make_corruptor(kinds,args.corrupt_prob,np.random.default_rng(args.seed))
-    if kinds:
-        print(f"CPA mode: corrupting the patch during training with {kinds} (p={args.corrupt_prob})")
-    else:
-        print("Standard EOT mode: no corruption during training")
     if args.crop_resolution%32!=0:
-        raise SystemExit(f"--crop-resolution must be divisible by 32 (got {args.crop_resolution})")
+        raise SystemExit("crop resolution must be a multiple of 32")
     weights=Path(args.weights)
     from ultralytics import YOLO
     yolo=YOLO(str(weights))
@@ -250,14 +231,11 @@ def main():
     labels_dir=dataset_root/"labels"/split_dir
     samples=load_target_class_instances(images_dir,labels_dir,target_id,args.max_instances)
     if not samples:
-        raise SystemExit(f"No instances of class '{names[target_id]}' found in {images_dir}")
-    print(f"Found {len(samples)} instances of '{names[target_id]}' in '{args.split}'")
+        raise SystemExit("no target instances")
     patch=nn.Parameter(torch.rand(3,args.patch_size,args.patch_size,device=device)*0.5+0.25)
     optimizer=torch.optim.Adam([patch],lr=args.lr)
     out_dir=Path(args.output_dir)
     out_dir.mkdir(parents=True,exist_ok=True)
-    print("\nStarting patch optimization...")
-    first_step=True
     for epoch in range(1,args.epochs+1):
         random.shuffle(samples)
         epoch_samples=samples[:args.instances_per_epoch] if args.instances_per_epoch else samples
@@ -289,16 +267,6 @@ def main():
                 continue # nothing detectable in this batch -> no useful gradient
             sum_clean_kept+=clean_peak[keep].mean().item()
             raw_pred=model(patched_batch)
-            if first_step:
-                if isinstance(raw_pred,(tuple,list)):
-                    print(f"[debug] model(x) returned a {type(raw_pred).__name__} of "
- f"{len(raw_pred)} tensors; shapes: "
- f"{[tuple(t.shape) if torch.is_tensor(t) else type(t) for t in raw_pred]}")
-                else:
-                    print(f"[debug] model(x) returned a single tensor; shape: {tuple(raw_pred.shape)}")
-                print(f"[debug] looking for a channel axis of size 4+{num_classes}={4+num_classes} "
- f"(4 box coords + {num_classes} classes)")
-                first_step=False
             if isinstance(raw_pred,(tuple,list)):
                 raw_pred=raw_pred[0]
             peak=extract_class_confidence(raw_pred,target_id,num_classes).max(dim=1).values # [B]
@@ -315,9 +283,7 @@ def main():
             n_steps+=1
         elapsed=time.time()-t0
         if n_steps==0:
-            print(f"Epoch {epoch:3d}/{args.epochs}  no usable instances (detector found none at "
- f"conf>={args.min_clean_conf} on {n_seen} crops) -- lower --min-clean-conf or check the "
- f"crop settings.  [{elapsed:.0f}s]")
+            print(f"Epoch {epoch:3d}/{args.epochs}  kept=0/{n_seen}")
             continue
         ck,pk=sum_clean_kept/n_steps,sum_patched/n_steps
         print(f"Epoch {epoch:3d}/{args.epochs}  clean(all)={sum_clean/max(n_seen,1):.3f}  "
@@ -327,8 +293,7 @@ def main():
             save_patch_png(patch,out_dir/f"patch_epoch{epoch}.png")
     final_path=out_dir/"patch_final.png"
     save_patch_png(patch,final_path)
-    print(f"\nDone. Final patch saved to: {final_path}")
-    print("Next step: patch_evaluate.py to measure attack success rate / confidence reduction.")
+    print(final_path)
 
 def save_patch_png(patch:torch.Tensor,path:Path):
     arr=(patch.detach().clamp(0,1).cpu().permute(1,2,0).numpy()*255).astype("uint8")

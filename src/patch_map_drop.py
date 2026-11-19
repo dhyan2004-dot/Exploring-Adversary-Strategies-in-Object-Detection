@@ -25,13 +25,13 @@ def parse_args():
     p.add_argument("--target-class",default="Tank")
     p.add_argument("--patch-scale",type=float,default=0.4)
     p.add_argument("--condition",default="none",choices=ALL_CONDITIONS,
-                   help="Corruption applied to the patch tile before pasting.")
+                   help="Corruption applied to the patch tile before pasting")
     p.add_argument("--max-files-per-photo",type=int,default=None)
     p.add_argument("--imgsz",type=int,default=None)
     p.add_argument("--seed",type=int,default=0)
     p.add_argument("--device",default=None)
     p.add_argument("--output-dir",default="patch_runs/mapdrop")
-    p.add_argument("--keep-images",action="store_true",help="Keep the patched copies (default: delete).")
+    p.add_argument("--keep-images",action="store_true",help="Keep the patched copies (default: delete)")
     return p.parse_args()
 
 def build_variant_split(src_images:Path,variant_tile,target_id:int,out_root:Path,files,patch_scale,
@@ -91,8 +91,6 @@ def main():
         c=list(images_dir.glob(f"{s}.*"))
         if c:
             files.append(c[0])
-    print(f"{len(files)} files from '{args.split}' | target {target_name} | patch_scale={args.patch_scale} "
- f"| condition={args.condition}")
     from ultralytics import YOLO
     model=YOLO(args.weights)
     imgsz=args.imgsz or detect_training_imgsz(args.weights) or 640
@@ -110,9 +108,8 @@ def main():
             n=build_variant_split(images_dir,tile,target_id,root,files,args.patch_scale,
                                     args.condition,args.seed)
             results[name]=val_metrics(model,root,names,imgsz,args.device)
-            print(f"  {name:<12} mAP50={results[name]['mAP50']:.4f}  "
- f"{target_name} AP50={results[name]['AP50_by_class'].get(target_name, float('nan')):.4f}"
- f"   ({n} instances patched)")
+            print(name,f"{results[name]['mAP50']:.4f}",
+                  f"{results[name]['AP50_by_class'].get(target_name, float('nan')):.4f}",n)
     finally:
         if not args.keep_images:
             shutil.rmtree(tmp_root,ignore_errors=True)
@@ -129,13 +126,12 @@ def main():
     print(f"\n{'':<14}{'mAP50 drop':>12}{target_name + ' AP50 drop':>20}")
     for name,d in drops.items():
         print(f"  {name:<12}{d['mAP50_drop']:>12.4f}{d[target_name + '_AP50_drop']:>20.4f}")
-    print("  (the adversarial drop only counts beyond the gray/noise drops: same occlusion, no optimisation)")
     summary={"target_class":target_name,"split":args.split,"patch":args.patch,
                "patch_scale":args.patch_scale,"condition":args.condition,"n_files":len(files),
                "max_files_per_photo":args.max_files_per_photo,"imgsz":imgsz,
                "results":results,"drops":drops}
     (out_dir/"mapdrop_summary.json").write_text(json.dumps(summary,indent=2))
-    print(f"\nSummary: {out_dir / 'mapdrop_summary.json'}")
+    print(out_dir/"mapdrop_summary.json")
 
 if __name__=="__main__":
     main()

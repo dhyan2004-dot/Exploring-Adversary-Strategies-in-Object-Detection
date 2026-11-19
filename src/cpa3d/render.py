@@ -12,9 +12,9 @@ import torch.nn.functional as F
 
 AMBIENT,DIFFUSE,SPECULAR,SHININESS=0.5,0.3,0.2,100.0
 FOV_DEG=45.0
-NOMINAL_DIST=6.0 # camera distance in patch units (patch ~1 m, UAV a few metres+ away
+NOMINAL_DIST=6.0
 
-EXTENT=1.6 # canvas spans [-EXTENT/2, EXTENT/2] patch units (fits any roll + dome)
+EXTENT=1.6
 
 def vertex_normals(verts,faces):
     fn=np.cross(verts[faces[:,1]]-verts[faces[:,0]],verts[faces[:,2]]-verts[faces[:,0]])
@@ -138,7 +138,7 @@ class ViewBank:
     def __len__(self):
         return len(self.face_idx)
     def render(self,texture,idx):
-        """texture: [3, F] per-facet colours (CPA) or [3, H, W] image (NPA), in [0,1], differentiable."""
+        """texture: [3, F] per-facet colours."""
         if texture.dim()==3: # image patch, sampled through the UVs
             tex=F.grid_sample(texture[None],self.grid[idx][None].to(texture.dtype),mode="bilinear",
                                 padding_mode="border",align_corners=False)[0]

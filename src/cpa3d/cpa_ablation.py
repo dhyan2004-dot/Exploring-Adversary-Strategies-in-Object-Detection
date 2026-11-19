@@ -74,8 +74,7 @@ def main():
     lines=[]
     P=lines.append
     P("# 3-D CPA ablations (pooled over folds)\n")
-    P("Cells: ASR (margin over the best same-size control [95% photo-level CI]). "
- "ASR = share of tanks detected before (conf >= thr) that disappear.\n")
+    P("Cells: ASR (margin over best control [95% CI])\n")
     tests_conds=[("none",["none"]),("corr. avg",CORR)]
     for thr in (0.5,0.25):
         P(f"\n## Threshold {thr}\n")
@@ -94,7 +93,7 @@ def main():
                 det=[r for r in data[ed].get(d,[]) if r["before_conf"]>=thr]
                 cells.append(f"{max(gone(det, k, thr, ['none']).mean() for k in CONTROLS):.3f}" if det else "--")
             P(f"| {size} | *best control* | "+" | ".join(cells)+" |")
-        P("\n**cpa_ls minus cpa_none at each size** (positive = corruption training helps)\n")
+        P("\n**cpa_ls - cpa_none per size**\n")
         P("| detector | sheet | condition | diff [95% CI] | photos that differ | p | Holm p |")
         P("|---|---|---|---|---|---|---|")
         for d in dets:

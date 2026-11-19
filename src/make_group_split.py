@@ -18,15 +18,14 @@ IMG_EXT={".jpg",".jpeg",".png",".bmp"}
 
 def parse_args():
     p=argparse.ArgumentParser(description="Photo-grouped K-fold split.")
-    p.add_argument("--root",required=True,help="The yolo_dataset folder (contains images/, labels/, data.yaml).")
+    p.add_argument("--root",required=True,help="The yolo_dataset folder (contains images/, labels/, data.yaml)")
     p.add_argument("--folds",type=int,default=5)
     p.add_argument("--seed",type=int,default=0)
     p.add_argument("--pool-splits",type=str,default="train,dev_val",
-                   help="Subfolders of images/ that form the pool to split.")
+                   help="Subfolders of images/ that form the pool to split")
     p.add_argument("--oversample",type=str,default="Military Truck=3,Tank=2",
-                   help="Per-class duplication factor for TRAINING files (a file gets the largest factor "
- "of the classes it contains). Same as balance_dataset.py. Use '' to disable.")
-    p.add_argument("--force",action="store_true",help="Delete and rebuild <root>/cv if it exists.")
+                   help="Per-class duplication factor for TRAINING files")
+    p.add_argument("--force",action="store_true",help="Delete and rebuild <root>/cv if it exists")
     return p.parse_args()
 
 def read_classes(label_path:Path):
@@ -82,23 +81,19 @@ def main():
     cv_dir=root/"cv"
     if cv_dir.exists():
         if (cv_dir/"folds.json").exists() and not args.force:
-            raise SystemExit(f"{cv_dir} already built. Pass --force to rebuild it "
- f"(only do that before any cv_run.py results exist).")
-        if not (cv_dir/"folds.json").exists():
-            print(f"{cv_dir} exists but has no folds.json (an earlier build was interrupted) -- rebuilding.")
+            raise SystemExit(f"{cv_dir} exists (--force to rebuild)")
         shutil.rmtree(cv_dir)
     factors={}
     name_to_id={v:k for k,v in names.items()}
     for item in [x for x in args.oversample.split(",") if x.strip()]:
         nm,fac=item.rsplit("=",1)
         if nm.strip() not in name_to_id:
-            raise SystemExit(f"--oversample: unknown class '{nm.strip()}' (names: {list(names.values())})")
+            raise SystemExit(f"unknown class {nm.strip()}")
         factors[name_to_id[nm.strip()]]=int(fac)
     files=[] # (img_path, group, is_dup)
     for split in [s.strip() for s in args.pool_splits.split(",") if s.strip()]:
         d=root/"images"/split
         if not d.exists():
-            print(f"(skipping missing pool split {d})")
             continue
         for img in sorted(d.iterdir()):
             if img.suffix.lower() in IMG_EXT and "_dup" not in img.stem:
@@ -119,15 +114,13 @@ def main():
     if len(group_counts)<k:
         raise SystemExit(f"Only {len(group_counts)} photos, cannot make {k} folds.")
     fold_of=assign_folds(group_counts,k,args.seed)
-    print(f"Pool: {len(files)} original files from {len(group_counts)} distinct source photos -> {k} folds")
-    print(f"Oversampling in each fold's TRAIN part only: { {names[c]: f for c, f in factors.items()} }")
+    print("files",len(files),"photos",len(group_counts),"folds",k)
     for split in ("val","test"):
         d=root/"images"/split
         if d.exists():
             other={extract_source_group(p.stem) for p in d.iterdir() if p.suffix.lower() in IMG_EXT}
             shared=other&set(group_counts)
-            print(f"  official {split}: {len(other)} photos, {len(shared)} shared with the pool"
- f"{'  <-- LEAK, investigate' if shared else ''}")
+            print(split,"photos",len(other),"shared_with_pool",len(shared))
     by_group=defaultdict(list)
     for img,g,is_dup in files:
         by_group[g].append((img,is_dup))
@@ -182,17 +175,11 @@ def main():
                    "group_to_fold":fold_of,"folds":info},fh,indent=1)
     print(f"\n{'fold':<7}{'train files':>12}{'held-out files':>16}{'held-out photos':>17}   "
           +"  ".join(f"{nm[:10]:>10}" for nm in names.values()))
-    print("        (class columns: held-out photos / held-out instances)")
     for f in range(k):
         r=info[f"fold{f}"]
         cols="  ".join(f"{r['per_class'][nm]['heldout_photos']:>4}/{r['per_class'][nm]['heldout_instances']:<5}"
                          for nm in names.values())
         print(f"fold{f:<3}{r['train_files']:>12}{r['val_files']:>16}{len(r['heldout_photos']):>17}   {cols}")
-    tank=[nm for nm in names.values() if nm=="Tank"]
-    for nm in tank:
-        mn=min(info[f"fold{f}"]["per_class"][nm]["heldout_photos"] for f in range(k))
-        print(f"\nSmallest held-out {nm} photo count in any fold: {mn}")
-    print(f"\nWrote {cv_dir}  (data.yaml per fold, folds.json). No photo is in both train and val of any fold.")
 
 if __name__=="__main__":
     main()

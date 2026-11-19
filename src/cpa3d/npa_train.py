@@ -33,13 +33,11 @@ def parse_args():
     p.add_argument("--det-loss",default="inst_max",choices=["inst_max","img_max"])
     p.add_argument("--tv-weight",type=float,default=None,help="default 0.1 (npa, pixel), 0 (camo, as AdvCaT)")
     p.add_argument("--z-proj",default="none",choices=["none","sphere"],
-                   help="npa: also keep z on the sphere ||z||2 = sqrt(d) where N(0,I) samples live (GAN-inversion prior)")
-    p.add_argument("--z-chunks",default="",help="npa: optimise only these BigGAN latent chunks, e.g. '0,1,2' "
- "(BigGAN-128 splits z into 6 x 20: chunk 0 -> 4x4 layout, chunks 1-5 -> the 5 upsampling blocks); "
- "the rest stay at their natural starting values")
+                   help="npa: also keep z on the sphere ||z||2 = sqrt(d) where N(0,I) samples live")
+    p.add_argument("--z-chunks",default="",help="npa: optimise only these BigGAN latent chunks (6 x 20), e.g. 0,1,2")
     p.add_argument("--sat-weight",type=float,default=0.0,help="penalty on saturated pixels (naturalness prior)")
     p.add_argument("--natural-stop",type=float,default=0.0,
-                   help="keep the last epoch's patch whose saturated-pixel %% is <= this (0 = off)")
+                   help="keep the last epoch's patch whose saturated-pixel %% is <= this")
     p.add_argument("--palette",default="woodland",help="camo: woodland | desert | auto (k-means of the tanks)")
     p.add_argument("--camo-points",type=int,default=15,help="camo: control points per colour")
     p.add_argument("--camo-lambda",type=float,default=0.7,help="camo: trainable share of the Gumbel seed")
@@ -76,7 +74,7 @@ def tv2d(x):
     return (a+b)/x.numel()
 
 def make_jitter(rng):
-    """adversarialYolo PatchTransformer: contrast U(0.8,1.2), brightness U(-0.1,0.1), noise U(-0.1,0.1)."""
+    """adversarialYolo PatchTransformer: contrast U(0.8,1.2)."""
     def j(p):
         c=float(rng.uniform(0.8,1.2))
         b=float(rng.uniform(-0.1,0.1))
@@ -141,7 +139,7 @@ def main():
         p0=patch_fn(hard=True).clamp(0,1).cpu().numpy()
     np.save(out/"patch_init.npy",p0)
     opt=torch.optim.Adam(groups,betas=(0.5,0.999),amsgrad=True)
-    if camo is not None: # AdvCaT halves the learning rates at fixed intervals (every 100 of 600 epochs)
+    if camo is not None:
         sched=torch.optim.lr_scheduler.StepLR(opt,step_size=max(1,a.epochs//4),gamma=0.5)
     else:
         sched=torch.optim.lr_scheduler.ReduceLROnPlateau(opt,"min",patience=a.plateau_patience)
@@ -220,10 +218,10 @@ def main():
         pf=patch_fn(hard=True).clamp(0,1).cpu().numpy() # camo: hard colours, as printed
     if a.natural_stop: # naturalness-budget early stop
         if kept is None:
-            print(f"natural-stop: no epoch had <= {a.natural_stop}% saturated pixels -> keeping the start image")
+            print("natural_stop_epoch",None)
             pf=p0
         else:
-            print(f"natural-stop: keeping epoch {kept[0]}")
+            print("natural_stop_epoch",kept[0])
             pf=kept[1]
             if kept[2] is not None:
                 z.data=kept[2]

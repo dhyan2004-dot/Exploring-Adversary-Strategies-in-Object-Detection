@@ -1,6 +1,5 @@
 # Transfer matrix (pooled over folds, no corruption at test)
 
-Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. **Bold** = white-box (same detector). Cell: ASR (margin over best control [95% photo CI]).
 
 
 ## Threshold 0.5
@@ -32,7 +31,7 @@ Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. **Bo
 | cpa_ls | +0.196 | +0.099 (12 pairs) | 0.51 |
 | npa_stop | +0.134 | +0.094 (12 pairs) | 0.70 |
 
-### CPA claim: cpa_ls - cpa_none (positive = cpa_ls transfers better)
+### cpa_ls - cpa_none
 
 | tested on | black-box surrogates | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|
@@ -42,7 +41,7 @@ Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. **Bo
 | rtdetr | yolov8s, yolov8m, yolo11s | +0.011 [-0.04, +0.06] | 9 | 0.945 | 1 |
 | ALL (pooled) | all off-diagonal | -0.004 [-0.02, +0.01] | 17 | 0.73 | 1 |
 
-### npa_stop - cpa_none (positive = npa_stop transfers better)
+### npa_stop - cpa_none
 
 | tested on | black-box surrogates | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|
@@ -81,7 +80,7 @@ Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. **Bo
 | cpa_ls | +0.164 | +0.101 (12 pairs) | 0.62 |
 | npa_stop | +0.098 | +0.083 (12 pairs) | 0.85 |
 
-### CPA claim: cpa_ls - cpa_none (positive = cpa_ls transfers better)
+### cpa_ls - cpa_none
 
 | tested on | black-box surrogates | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|
@@ -91,7 +90,7 @@ Rows: detector the patch was TRAINED on. Columns: detector it is TESTED on. **Bo
 | rtdetr | yolov8s, yolov8m, yolo11s | -0.010 [-0.05, +0.03] | 11 | 0.729 | 1 |
 | ALL (pooled) | all off-diagonal | +0.002 [-0.01, +0.02] | 17 | 0.87 | 1 |
 
-### npa_stop - cpa_none (positive = npa_stop transfers better)
+### npa_stop - cpa_none
 
 | tested on | black-box surrogates | diff [95% CI] | photos that differ | p | Holm p |
 |---|---|---|---|---|---|
