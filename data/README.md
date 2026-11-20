@@ -1,3 +1,3 @@
 # Data
 
-The dataset cannot be uploaded here as it is course specific.
+The dataset is not uploaded here as it is course specific.
